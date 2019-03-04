@@ -1,4 +1,3 @@
-import serial
 import asyncore
 import socket
 import json
@@ -7,11 +6,9 @@ import threading
 import numpy as np
 import matplotlib.pyplot as plt
 from time import sleep
-import time
 from numpy.linalg import inv
 import decimal
 from kalman import SingleStateKalmanFilter
-import requests
 
 FirstClient = {}
 SecondClient = {}
@@ -22,130 +19,6 @@ list_client=[]
 
 Xlist = []
 Ylist = []
-
-#GPS start
-#gps = serial.Serial("/dev/ttyACM0", baudrate = 9600)
-
-class child_inf:
-    def __init__(self):
-        self.child_infos = []
-        self.ready_child = []
-
-    @staticmethod
-    def plus(mac_id,x_value,y_value):
-        x_value = str(x_value);y_value=str(y_value);mac_id=str(mac_id)
-        Senten = mac_id+","+x_value+","+y_value
-        Number.child_info.append(Senten)
-
-    @staticmethod
-    def cal():
-	if(len(Number.child_info) < 8):
-		print("return")
-		return
-	print(Number.child_info)
-        set_li=[]
-        for i in range(len(Number.child_info)):
-            imac,ix,iy = Number.child_info[i].split(",")
-            set_li.append(imac)
-
-        set_li=list(set(list(set_li)))
-
-        for i in range(len(set_li)):
-            imac = set_li[i]
-            cnt=0
-            for j in range(len(Number.child_info)):
-                jmac,jx,jy = Number.child_info[j].split(",")
-                if(i!=j and imac == jmac):
-                    cnt+=1
-                    if(cnt > 8):
-                        using_li = []
-                        for k in range(len(Number.child_info)):
-                            kmac,kx,ky = Number.child_info[k].split(",")
-                            if(jmac == kmac):
-                                using_li.append(kx+","+ky)
-			print("confirm hochool!!!")
-                        result = child_inf.confirm(jmac,using_li)
-			Number.ready_child.append(result)
-                        break
-
-	#print("child_inf : ",Number.ready_child)
-	if(len(Number.ready_child)>0):
-		child_inf.transmit(Number.ready_child)
-		Number.ready_child=[]
-
-	print("this is child_inf.ready_child : ",Number.ready_child)
-
-
-#        Number.child_info = []
-    @staticmethod
-    def confirm(Mac,lis):
-        Upcnt=0;Downcnt=0
-        XV=0;YV=0
-        for i in range(len(lis)):
-            xvalue,yvalue=lis[i].split(",")
-            xvalue = float(xvalue);yvalue=float(yvalue)
-            print("====================confirm========================")
-            print("Mac : ",Mac, " xvalue : ",xvalue," yvalue : ",yvalue)
-            print("====================confirm========================")
-            if(xvalue > 0 and yvalue<10):
-                Upcnt += 1
-            else:
-                Downcnt += 1
-        if(Downcnt>Upcnt):
-            status=True
-        else:
-            status=False
-
-	result = str(Mac)+","+str(status)
-	return result
-	print("finished!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-#        child_inf.transmit(Mac,status)
-
-    @staticmethod
-    def transmit(lis):
-
-#	line = gps.readline()
-#        data = line.split(",")
-#        if data[0] == "$GPRMC":
-#            if data[2] == "A":
-#                latitude = data[3]
-#                longitude = data[5]
-
-#        print("MacAdress : ",Mac, " ",boolean)
-#	busid=cmdline('cat /proc/cpuinfo | grep Serial | awk \'{print$3}\'').strip()
-        #url=""
-
-	array='{"busid":"busid","lat" : "1234","lon" : "2134","students" :['
-
-	payload = ""
-	for i in range(len(lis)):
-		if(i==len(lis)-1):
-			mac,boool=lis[i].split(",")
-			payload=payload+'{"stuid":'+'\\"'+str(mac)+'\"\\'+',\"in\":\"'+boool+'\"}]}'
-			break
-		mac,boool=lis[i].split(",")
-		payload=payload+'{"stuid":'+'\\"'+str(mac)+'\"\\'+',\"in\":\"'+boool+'\"},'
-
-	payload=array+payload.replace("\\","")
-
-	print("payload : ",payload)
-	json.loads(payload)
-	print("success to change json")
-	
-
-        #payload = {
-#		"busid" : cmdline('cat /proc/cpuinfo | grep Serial | awk \'{print$3}\'').strip(),
-#		"lat" : "latitude",
-#		"lon" : "longitude",
-#		"students" : [
-#		{
-#		 "stuid" : "Mac"
-#		 "in" : boolean,
-#		 "danger" : false
-#		}
-#		]
-#            }
-        #r = requests.post(url,json=payload)
 
 #Write something
 def WriteTxt1(st):
@@ -253,9 +126,8 @@ class Messenger(threading.Thread): #for server.py
 
 class EchoHandler(asyncore.dispatcher_with_send):
     def handle_read(self):
-	print("Here",Number.num," ",len(FirstClient)," ",len(SecondClient)," ",len(ThirdClient))
-        if Number.num > 2 and len(FirstClient)>1 and len(SecondClient)>1 and len(ThirdClient)>1:
-            print("timestamp : ", Number.timestamp)
+#	print("Here")
+        if Number.num > 2 and len(FirstClient) >2 and len(SecondClient)>2 and len(ThirdClient)>2:
             #################Calculate X,Y#########################
 	    Firstlocation = [1,1]
 	    Secondlocation = [2,2]
@@ -284,7 +156,7 @@ class EchoHandler(asyncore.dispatcher_with_send):
 			X_Y = []
 			MacAddr = key
 			global d1, d2, d3
-			x1=6;y1=6;x2=0;y2=6;x3=0;y3=0
+			x1=2.2;y1=0;x2=2.2;y2=1.5;x3=0;y3=0
 			print("Start------------")
 			for fkey, fvalue in FirstClient.items():
 					if MacAddr == fkey:
@@ -317,7 +189,7 @@ class EchoHandler(asyncore.dispatcher_with_send):
 			il.append(MacAddr,round(Decimal_X,3),round(Decimal_Y,3))
 			print("MacAddr : ",MacAddr,"X : ",round(Decimal_X,3),"Y : ",round(Decimal_Y,3))
 			original_line = "MacAddr : ",MacAddr,"X : ",round(Decimal_X,3),"Y : ",round(Decimal_Y,3)
-			if(MacAddr!="Client"):
+			if(MacAddr!="Client" or MacAddr =="c2:01:18:00:00:cd" or MacAddr=="c2:01:18:00:00:b3" or MacAddr=="c2:01:18:00:00:da"):
 				WriteTxt1(original_line)
 			prepare_server = {}
                         for key, value in il.Mac_dict.items():
@@ -327,8 +199,8 @@ class EchoHandler(asyncore.dispatcher_with_send):
 					continue
 				print("Kalman MacAddr : ",key,"X : ",round(decimal.Decimal(X),3),"Y : ",round(decimal.Decimal(Y),3))
  				Kalman_line = "Kalman MacAddr : ",key,"X : ",round(decimal.Decimal(X),3),"Y : ",round(decimal.Decimal(Y),3)
-				child_inf.plus(key,round(decimal.Decimal(X),3),round(decimal.Decimal(Y),3))
-				WriteTxt2(Kalman_line)
+				if(MacAddr =="c2:01:18:00:00:cd" or MacAddr=="c2:01:18:00:00:b3" or MacAddr=="c2:01:18:00:00:da"):
+					WriteTxt2(Kalman_line)
 				prepare_server[key] = str(X)+" "+str(Y)
 			WriteTxt2('\n')
                         Child_location.update({MacAddr:X_Y})
@@ -342,12 +214,6 @@ class EchoHandler(asyncore.dispatcher_with_send):
 	    Child_location.clear()
 
         else:
-                #prepare for transmit
-                flag = False;initial = False
-
-		# Define timestamp
-		Number.timestamp = float(time.time())-float(Number.start_time)
-
 		# Define the data
                 prepare_dict_data = {}
                 dict_data = {}
@@ -375,26 +241,7 @@ class EchoHandler(asyncore.dispatcher_with_send):
                                 for i in range(0,len(IDlist)):
                                         ThirdClient.update({IDlist[i]:Distance[i]})
 
-                if(int(Number.timestamp%10) == 1 or int(Number.timestamp%10) == 5 or int(Number.timestamp%10) == 9):
-                        flag = True
-
-		if(int(Number.timestamp) > 100):
-			initial = True
-			Number.start_time = time.time()
-			print("Number : ",Number.timestamp)
-                if(flag):
-                        print("timestamp : ", Number.timestamp)
-                        child_inf.cal()
-			flag = False
-
-		if(initial):
-			Number.child_info = []
-			print("initial : ", Number.child_info)
-			initial=False
-
 		print("receive..")
-		data ="hi"
-        	self.send(data)
 
     def handle_close(self):
 		print("======================Server: Connection Closed========================")
@@ -403,10 +250,6 @@ class EchoHandler(asyncore.dispatcher_with_send):
 class Number:
     i = 0
     num = 0
-    start_time=0
-    timestamp = 0
-    child_info = []
-    ready_child = []
 
 class EchoServer(asyncore.dispatcher):
 
@@ -418,15 +261,13 @@ class EchoServer(asyncore.dispatcher):
         self.listen(5)
 
     def handle_accept(self):
-	Number.start_time = float(time.time())
-       	Number.num += 1
-	print("time : ",Number.start_time)
-	pair = self.accept()
+        pair = self.accept()
+	Number.num += 1
         if pair is not None:
             sock, addr = pair
             print ('Incoming connection from %s' % repr(addr))
             handler = EchoHandler(sock)
 
 
-server = EchoServer('192.168.35.16', 9011)
+server = EchoServer('192.168.0.16', 9011)
 asyncore.loop()
