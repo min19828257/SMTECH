@@ -68,7 +68,7 @@ class child_inf:
 			Number.ready_child.append(result)
                         break
 
-	#print("child_inf : ",Number.ready_child)
+#       print("child_inf : ",Number.ready_child)
 	if(len(Number.ready_child)>0):
 		child_inf.transmit(Number.ready_child)
 		Number.ready_child=[]
@@ -131,7 +131,7 @@ class child_inf:
 	print("payload : ",payload)
 	json.loads(payload)
 	print("success to change json")
-	
+
 
         #payload = {
 #		"busid" : cmdline('cat /proc/cpuinfo | grep Serial | awk \'{print$3}\'').strip(),
@@ -146,18 +146,6 @@ class child_inf:
 #		]
 #            }
         #r = requests.post(url,json=payload)
-
-#Write something
-def WriteTxt1(st):
-        file = open('ouput1.txt', 'a')
-        line = str(st)
-        file.write(line)
-        file.write('\n')
-def WriteTxt2(st):
-        file = open('ouput2.txt', 'a')
-        line = str(st)
-        file.write(line)
-        file.write('\n')
 
 #Make the Kalman
 def Kalman(NX,NY):
@@ -211,27 +199,7 @@ class ilist:
 			self.item.append(i)
 		self.item = list(set(self.item))
 
-def draw(a,b):
-    x=float(a)
-    y=float(b)
-
-    plt.cla()
-    plt.grid(True)
-    plt.xlabel("X data")
-    plt.ylabel("Y data")
-    plt.title("Title")
-    plt.scatter(float(x),float(y))
-    plt.xlim(0,3)
-    plt.ylim(0,3)
-#    plt.scatter(10,10)
-#    plt.scatter(10,0)
-#    plt.scatter(0,10)
-
-    fig = plt.gcf()
-    fig.savefig("GG.png")
-
 def Prepare():      #this is for 2
-
     global data,dict1
     a= '1.112'
     b= '2.223'
@@ -290,7 +258,6 @@ class EchoHandler(asyncore.dispatcher_with_send):
 					if MacAddr == fkey:
 						distance1 = fvalue
 						d1 = float(distance1)
-
 			for skey, svalue in SecondClient.items():
                                         if MacAddr == skey:
                                                 distance2 = svalue
@@ -317,8 +284,6 @@ class EchoHandler(asyncore.dispatcher_with_send):
 			il.append(MacAddr,round(Decimal_X,3),round(Decimal_Y,3))
 			print("MacAddr : ",MacAddr,"X : ",round(Decimal_X,3),"Y : ",round(Decimal_Y,3))
 			original_line = "MacAddr : ",MacAddr,"X : ",round(Decimal_X,3),"Y : ",round(Decimal_Y,3)
-			if(MacAddr!="Client"):
-				WriteTxt1(original_line)
 			prepare_server = {}
                         for key, value in il.Mac_dict.items():
 				X,Y = value.split(" ")
@@ -328,9 +293,7 @@ class EchoHandler(asyncore.dispatcher_with_send):
 				print("Kalman MacAddr : ",key,"X : ",round(decimal.Decimal(X),3),"Y : ",round(decimal.Decimal(Y),3))
  				Kalman_line = "Kalman MacAddr : ",key,"X : ",round(decimal.Decimal(X),3),"Y : ",round(decimal.Decimal(Y),3)
 				child_inf.plus(key,round(decimal.Decimal(X),3),round(decimal.Decimal(Y),3))
-				WriteTxt2(Kalman_line)
 				prepare_server[key] = str(X)+" "+str(Y)
-			WriteTxt2('\n')
                         Child_location.update({MacAddr:X_Y})
 			Child_location.clear()
 
@@ -375,13 +338,15 @@ class EchoHandler(asyncore.dispatcher_with_send):
                                 for i in range(0,len(IDlist)):
                                         ThirdClient.update({IDlist[i]:Distance[i]})
 
+		#prepare to transmit to the company server
                 if(int(Number.timestamp%10) == 1 or int(Number.timestamp%10) == 5 or int(Number.timestamp%10) == 9):
                         flag = True
-
+		#initialize the time as 0
 		if(int(Number.timestamp) > 100):
 			initial = True
 			Number.start_time = time.time()
 			print("Number : ",Number.timestamp)
+		#excute the calculate
                 if(flag):
                         print("timestamp : ", Number.timestamp)
                         child_inf.cal()
@@ -393,7 +358,7 @@ class EchoHandler(asyncore.dispatcher_with_send):
 			initial=False
 
 		print("receive..")
-		data ="hi"
+		data ="ok to receive"
         	self.send(data)
 
     def handle_close(self):
