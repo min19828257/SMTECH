@@ -54,7 +54,7 @@ except:
 blescan.hci_le_set_scan_parameters(sock)
 blescan.hci_enable_le_scan(sock)
 
-HOST='192.168.35.16'
+HOST='192.168.1.5'
 
 c = socket(AF_INET, SOCK_STREAM)
 print 'connecting....'

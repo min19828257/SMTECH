@@ -24,7 +24,7 @@ Xlist = []
 Ylist = []
 
 #GPS start
-#gps = serial.Serial("/dev/ttyACM0", baudrate = 9600)
+gps = serial.Serial("/dev/ttyACM0", baudrate = 9600)
 
 class child_inf:
     def __init__(self):
@@ -75,7 +75,6 @@ class child_inf:
 
 	print("this is child_inf.ready_child : ",Number.ready_child)
 
-
 #        Number.child_info = []
     @staticmethod
     def confirm(Mac,lis):
@@ -84,9 +83,9 @@ class child_inf:
         for i in range(len(lis)):
             xvalue,yvalue=lis[i].split(",")
             xvalue = float(xvalue);yvalue=float(yvalue)
-            print("====================confirm========================")
-            print("Mac : ",Mac, " xvalue : ",xvalue," yvalue : ",yvalue)
-            print("====================confirm========================")
+#            print("====================confirm========================")
+#            print("Mac : ",Mac, " xvalue : ",xvalue," yvalue : ",yvalue)
+#            print("====================confirm========================")
             if(xvalue > 0 and yvalue<10):
                 Upcnt += 1
             else:
@@ -98,24 +97,33 @@ class child_inf:
 
 	result = str(Mac)+","+str(status)
 	return result
-	print("finished!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	print("finished!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 #        child_inf.transmit(Mac,status)
 
     @staticmethod
     def transmit(lis):
+	button=0
+        print("transmit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	line = gps.readline()
+        data = line.split(",")
+        print("transmit!!!!!!!!!2@@@@22222222222222")
+        if data[0] == "$GPRMC":
+            if data[2] == "A":
+                latitude = data[3]
+                longitude = data[5]
+		button = 1
+	print("transmit!!!!!!!!!!3#####33333333333")
 
-#	line = gps.readline()
-#        data = line.split(",")
-#        if data[0] == "$GPRMC":
-#            if data[2] == "A":
-#                latitude = data[3]
-#                longitude = data[5]
+	if(button != 1):
+		latitude="9999"
+		longitude="9999"
 
+	print("latitude : ", latitude, "longitude : ",longitude)
 #        print("MacAdress : ",Mac, " ",boolean)
 #	busid=cmdline('cat /proc/cpuinfo | grep Serial | awk \'{print$3}\'').strip()
         #url=""
 
-	array='{"busid":"busid","lat" : "1234","lon" : "2134","students" :['
+	array='{"busid":"busid","lat" : '+"\""+latitude+"\""+',"lon":'+"\""+longitude+"\""+',"students" :['
 
 	payload = ""
 	for i in range(len(lis)):
@@ -131,7 +139,6 @@ class child_inf:
 	print("payload : ",payload)
 	json.loads(payload)
 	print("success to change json")
-
 
         #payload = {
 #		"busid" : cmdline('cat /proc/cpuinfo | grep Serial | awk \'{print$3}\'').strip(),
@@ -207,8 +214,20 @@ def Prepare():      #this is for 2
     text=a+c+b
     dict1 = {"id1":text,"id2":text}
     data = "hello"
-    x = Messenger(name="send")
-    x.start()
+    line = gps.readline()
+    data = line.split(",")
+    button=0
+    if data[0] == "$GPRMC":
+        if data[2] == "A":
+            latitude = data[3]
+            longitude = data[5]
+            button = 1
+    if button!=1:
+	latitude="9999"
+	longitude="7777"
+    print("prepare~~~~~~~~~~~~~~~~~~~~",latitude,"longitude ",longitude)
+#    x = Messenger(name="send")
+#    x.start()
 
 class Messenger(threading.Thread): #for server.py
 
@@ -374,13 +393,15 @@ class Number:
     ready_child = []
 
 class EchoServer(asyncore.dispatcher):
-
     def __init__(self, host, port):
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.set_reuse_addr()
         self.bind((host, port))
         self.listen(5)
+        print("1start1")
+	Prepare()
+
 
     def handle_accept(self):
 	Number.start_time = float(time.time())
@@ -393,5 +414,5 @@ class EchoServer(asyncore.dispatcher):
             handler = EchoHandler(sock)
 
 
-server = EchoServer('192.168.35.16', 9011)
+server = EchoServer('192.168.1.5', 9011)
 asyncore.loop()
