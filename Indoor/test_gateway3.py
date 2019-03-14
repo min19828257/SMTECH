@@ -45,54 +45,59 @@ def Kalman(rssi):
 
 try:
         sock = bluez.hci_open_dev(dev_id)
-        print "ble thread started"
+        print("ble thread started")
 
 except:
-        print "error accessing bluetooth device..."
+        print("error accessing bluetooth device...")
         sys.exit(1)
 
 blescan.hci_le_set_scan_parameters(sock)
 blescan.hci_enable_le_scan(sock)
 
-HOST='192.168.1.5'
+HOST='192.168.35.16'
 
 c = socket(AF_INET, SOCK_STREAM)
-print 'connecting....'
+print('connecting....')
 c.connect((HOST,9011))
-print 'ok'
+print('ok')
 while True:
-	list_ID = []
-	list_RSSI = []
+        list_ID = []
+        list_RSSI = []
 
-	dict_data = {}
+        dict_data = {}
         returnedList = blescan.parse_events(sock, 10)
+
         for beacon in returnedList:
                 columm_storage = []
-                columm_storage = beacon.split(',')
-                list_ID.append(columm_storage[0])
+                beacon = str(beacon)[1:-1]
+                print("columm_storage : ",beacon)
+                columm_storage = beacon.split(';')
+                list_ID.append(columm_storage[1].strip())
 #                list_RSSI.append(10**((-59-float(columm_storage[5]))/20))
-		list_RSSI.append(float(columm_storage[5]))
-		print("MAC : ",columm_storage[0], "RSSI : ",10**((-59-float(columm_storage[5]))/20))
-	
-	list_RSSI = Kalman(list_RSSI)
+                list_RSSI.append(float(columm_storage[4].split(':')[1].strip()))
+                print("MAC : ",columm_storage[1], "RSSI : ",10**((-59-float(columm_storage[4].split(':')[1].strip()))/20))
 
-	for i in range(0,len(list_RSSI)):
-		list_RSSI[i] = 10**((-59-float(list_RSSI[i]))/20)
+        list_RSSI = Kalman(list_RSSI)
+
+        for i in range(0,len(list_RSSI)):
+                list_RSSI[i] = 10**((-59-float(list_RSSI[i]))/20)
 
 # Input Client ID
-	list_ID.append("Client")
-	list_RSSI.append(3)
+        list_ID.append("Client")
+        list_RSSI.append(3)
 
         for i in range(0,len(list_ID)):
                 dict_data.update({list_ID[i]:list_RSSI[i]})
  #       print("finish this update")
 
         for i in dict_data:
-		print(i,"Kalman : " ,dict_data[i])
-	print("\n")
+                print(i,"Kalman : " ,dict_data[i])
+        print("\n")
         data = json.dumps(dict_data)
         if data:
                 c.sendall(data.encode())
-#        print ('recive_data : ',c.recv(1024))
+        else:
+                continue
+        print ('recive_data : ',c.recv(1024))
 c.close()
 

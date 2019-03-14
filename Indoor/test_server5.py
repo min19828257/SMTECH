@@ -12,6 +12,10 @@ from numpy.linalg import inv
 import decimal
 from kalman import SingleStateKalmanFilter
 import requests
+from firebase import firebase
+from firebase_admin import auth
+import firebase_admin
+from firebase_admin import credentials
 
 FirstClient = {}
 SecondClient = {}
@@ -24,7 +28,7 @@ Xlist = []
 Ylist = []
 
 #GPS start
-gps = serial.Serial("/dev/ttyACM0", baudrate = 9600)
+#gps = serial.Serial("/dev/ttyACM0", baudrate = 9600)
 
 class child_inf:
     def __init__(self):
@@ -39,10 +43,10 @@ class child_inf:
 
     @staticmethod
     def cal():
-	if(len(Number.child_info) < 8):
-		print("return")
-		return
-	print(Number.child_info)
+        if(len(Number.child_info) < 8):
+                print("return")
+                return
+        print(Number.child_info)
         set_li=[]
         for i in range(len(Number.child_info)):
             imac,ix,iy = Number.child_info[i].split(",")
@@ -63,17 +67,17 @@ class child_inf:
                             kmac,kx,ky = Number.child_info[k].split(",")
                             if(jmac == kmac):
                                 using_li.append(kx+","+ky)
-			print("confirm hochool!!!")
+#                                print("confirm hochool!!!")
                         result = child_inf.confirm(jmac,using_li)
-			Number.ready_child.append(result)
+                        Number.ready_child.append(result)
                         break
 
 #       print("child_inf : ",Number.ready_child)
-	if(len(Number.ready_child)>0):
-		child_inf.transmit(Number.ready_child)
-		Number.ready_child=[]
+        if(len(Number.ready_child)>0):
+                child_inf.transmit(Number.ready_child)
+                Number.ready_child=[]
 
-	print("this is child_inf.ready_child : ",Number.ready_child)
+        print("this is child_inf.ready_child : ",Number.ready_child)
 
 #        Number.child_info = []
     @staticmethod
@@ -95,116 +99,119 @@ class child_inf:
         else:
             status=False
 
-	result = str(Mac)+","+str(status)
-	return result
-	print("finished!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        result = str(Mac)+","+str(status)
+        return result
+#	print("finished!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 #        child_inf.transmit(Mac,status)
 
     @staticmethod
     def transmit(lis):
-	button=0
-        print("transmit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-	line = gps.readline()
+
+	#SET THE FIREBASE
+#        print("SET THE FIREBASE")
+#        cred = credentials.Certificate("./path/to/serviceAccountKey.json")
+#        firebase_admin.initialize_app(cred)
+
+	#ACCESS TO DB
+        print("ACCESS TO BD")
+        global firebase
+        firebase = firebase.FirebaseApplication("https://kindersafety-83c44.firebaseio.com/", None)
+
+        user = auth.get_user_by_email('kerylaw73@gmail.com')
+        print('Successfully fetched user data: {0}'.format(user.uid))
+
+        button=0
+        line = gps.readline()
         data = line.split(",")
-        print("transmit!!!!!!!!!2@@@@22222222222222")
         if data[0] == "$GPRMC":
             if data[2] == "A":
                 latitude = data[3]
                 longitude = data[5]
-		button = 1
-	print("transmit!!!!!!!!!!3#####33333333333")
+                button = 1
 
-	if(button != 1):
-		latitude="9999"
-		longitude="9999"
+        if(button != 1):
+                latitude="9999"
+                longitude="9999"
 
-	print("latitude : ", latitude, "longitude : ",longitude)
+        print("latitude : ", latitude, "longitude : ",longitude)
 #        print("MacAdress : ",Mac, " ",boolean)
-#	busid=cmdline('cat /proc/cpuinfo | grep Serial | awk \'{print$3}\'').strip()
-        #url=""
+        busid=cmdline('cat /proc/cpuinfo | grep Serial | awk \'{print$3}\'').strip()
 
-	array='{"busid":"busid","lat" : '+"\""+latitude+"\""+',"lon":'+"\""+longitude+"\""+',"students" :['
+#	array='{"busid":"busid","lat" : '+"\""+latitude+"\""+',"lon":'+"\""+longitude+"\""+',"students" :['
+        array='{"busid":"busid"','"l" : ['+"\""+latitude+"\""+","+"\""+longitude+"]"+",students"+' :['
 
-	payload = ""
-	for i in range(len(lis)):
-		if(i==len(lis)-1):
-			mac,boool=lis[i].split(",")
-			payload=payload+'{"stuid":'+'\\"'+str(mac)+'\"\\'+',\"in\":\"'+boool+'\"}]}'
-			break
-		mac,boool=lis[i].split(",")
-		payload=payload+'{"stuid":'+'\\"'+str(mac)+'\"\\'+',\"in\":\"'+boool+'\"},'
+        payload = ""
+        for i in range(len(lis)):
+                if(i==len(lis)-1):
+                        mac,boool=lis[i].split(",")
+                        payload=payload+'{"stuid":'+'\\"'+str(mac)+'\"\\'+',\"in\":\"'+boool+'\"}]}'
+                        break
+                mac,boool=lis[i].split(",")
+                payload=payload+'{"stuid":'+'\\"'+str(mac)+'\"\\'+',\"in\":\"'+boool+'\"},'
 
-	payload=array+payload.replace("\\","")
+        payload=array+payload.replace("\\","")
 
-	print("payload : ",payload)
-	json.loads(payload)
-	print("success to change json")
+        print("payload : ",payload)
+        json.loads(payload)
+        print("success to change json")
 
-        #payload = {
-#		"busid" : cmdline('cat /proc/cpuinfo | grep Serial | awk \'{print$3}\'').strip(),
-#		"lat" : "latitude",
-#		"lon" : "longitude",
-#		"students" : [
-#		{
-#		 "stuid" : "Mac"
-#		 "in" : boolean,
-#		 "danger" : false
-#		}
-#		]
-#            }
+        result = firebase.put('/driversAvailable', user.uid, array )
+        print(result)
         #r = requests.post(url,json=payload)
 
 #Make the Kalman
 def Kalman(NX,NY):
 	# Create some random temperature data
-	random_data = (NX,NY)
+        random_data = (NX,NY)
 
 	# Initialise the Kalman Filter
 
-	A = 1  # No process innovation
-	C = 1  # Measurement
-	B = 0  # No control input
-	Q = 0.005  # Process covariance
-	R = 1  # Measurement covariance
-	x = 0  # Initial estimate
-	P = 1  # Initial covariance
+        A = 1  # No process innovation
+        C = 1  # Measurement
+        B = 0  # No control input
+        Q = 0.005  # Process covariance
+        R = 1  # Measurement covariance
+        x = 0  # Initial estimate
+        P = 1  # Initial covariance
 
-	kalman_filter = SingleStateKalmanFilter(A, B, C, x, P, Q, R)
+        kalman_filter = SingleStateKalmanFilter(A, B, C, x, P, Q, R)
 
 	# Empty lists for capturing filter estimates
-	kalman_filter_estimates = []
+        kalman_filter_estimates = []
 
 	# Simulate the data arriving sequentially
-	for data in random_data:
-	    kalman_filter.step(0, data)
-	    kalman_filter_estimates.append(kalman_filter.current_state())
+        for data in random_data:
+            kalman_filter.step(0, data)
+            kalman_filter_estimates.append(kalman_filter.current_state())
 #	print("kalman values: ", kalman_filter_estimates[0]," : ", kalman_filter_estimates[1])
+#        return kalman_filter_estimates[0],kalman_filter_estimates[1]
+
         return kalman_filter_estimates[0],kalman_filter_estimates[1]
 
 class ilist:
-	item = []
-	Mac_dict = {}
+        item = []
+        Mac_dict = {}
 
-	def initialize(self):
-		Mac_dict.clear()
-		Mac_dict = {}
+        def initialize(self):
+                Mac_dict.clear()
+                Mac_dict = {}
 
-	def initial(self, inilist):
-		self.Mac_dict = {}
-		for i in inilist:
-			result = str(0)+" "+str(0)
-			self.Mac_dict[i]=result
+        def initial(self, inilist):
+                self.Mac_dict = {}
+                for i in inilist:
+                        result = str(0)+" "+str(0)
+                        self.Mac_dict[i]=result
 
-	def append(self,Mac,X,Y):
-		for i in self.item:
-			if Mac == i:
-				result = str(X)+" "+str(Y)
-				self.Mac_dict[Mac]=result
+        def append(self,Mac,X,Y):
+                for i in self.item:
+                        if Mac == i:
+                                result = str(X)+" "+str(Y)
+                                self.Mac_dict[Mac]=result
 
-	def input(self,ilist):
-		for i in ilist:
-			self.item.append(i)
-		self.item = list(set(self.item))
+        def input(self,ilist):
+                for i in ilist:
+                        self.item.append(i)
+                self.item = list(set(self.item))
 
 def Prepare():      #this is for 2
     global data,dict1
@@ -214,7 +221,7 @@ def Prepare():      #this is for 2
     text=a+c+b
     dict1 = {"id1":text,"id2":text}
     data = "hello"
-    line = gps.readline()
+#    line = gps.readline()
     data = line.split(",")
     button=0
     if data[0] == "$GPRMC":
@@ -223,8 +230,8 @@ def Prepare():      #this is for 2
             longitude = data[5]
             button = 1
     if button!=1:
-	latitude="9999"
-	longitude="7777"
+        latitude="9999"
+        longitude="7777"
     print("prepare~~~~~~~~~~~~~~~~~~~~",latitude,"longitude ",longitude)
 #    x = Messenger(name="send")
 #    x.start()
@@ -240,13 +247,13 @@ class Messenger(threading.Thread): #for server.py
 
 class EchoHandler(asyncore.dispatcher_with_send):
     def handle_read(self):
-	print("Here",Number.num," ",len(FirstClient)," ",len(SecondClient)," ",len(ThirdClient))
+        print("Here",Number.num," ",len(FirstClient)," ",len(SecondClient)," ",len(ThirdClient))
         if Number.num > 2 and len(FirstClient)>1 and len(SecondClient)>1 and len(ThirdClient)>1:
             print("timestamp : ", Number.timestamp)
             #################Calculate X,Y#########################
-	    Firstlocation = [1,1]
-	    Secondlocation = [2,2]
-	    Thirdlocation = [1,3]
+            Firstlocation = [1,1]
+            Secondlocation = [2,2]
+            Thirdlocation = [1,3]
 
             #extract data that is items and combine and make the condition
             items_list = []
@@ -268,90 +275,94 @@ class EchoHandler(asyncore.dispatcher_with_send):
             inilist = []
             for key in items_list:
 #			inilist.append(key)
-			X_Y = []
-			MacAddr = key
-			global d1, d2, d3
-			x1=6;y1=6;x2=0;y2=6;x3=0;y3=0
-			print("Start------------")
-			for fkey, fvalue in FirstClient.items():
-					if MacAddr == fkey:
-						distance1 = fvalue
-						d1 = float(distance1)
-			for skey, svalue in SecondClient.items():
+                        X_Y = []
+                        MacAddr = key
+                        global d1, d2, d3
+                        x1=6;y1=6;x2=0;y2=6;x3=0;y3=0
+                        print("Start------------")
+                        for fkey, fvalue in FirstClient.items():
+                                        if MacAddr == fkey:
+                                                distance1 = fvalue
+                                                d1 = float(distance1)
+                        for skey, svalue in SecondClient.items():
                                         if MacAddr == skey:
                                                 distance2 = svalue
-						d2 = float(distance2)
-			for tkey, tvalue in ThirdClient.items():
+                                                d2 = float(distance2)
+                        for tkey, tvalue in ThirdClient.items():
                                         if MacAddr == tkey:
                                                 distance3 = tvalue
-						d3 = float(distance3)
-			print(d1," ",d2," ",d3)
+                                                d3 = float(distance3)
+#			print(d1," ",d2," ",d3)
 			#Calculate X_Y
-			C = d1**2-d2**2-x1**2+x2**2-y1**2+y2**2
+                        C = d1**2-d2**2-x1**2+x2**2-y1**2+y2**2
                         E = -2*y2+2*y3
                         F = d2**2-d3**2-x2**2+x3**2-y2**2+y3**2
                         B = -2*y1+2*y2
                         A = -2*x1+2*x2
                         D = -2*x2+2*x3
 
-			X = (C*E-F*B)/(E*A-B*D)
-			Y = (C*D-A*F)/(B*D-A*E)
-			X_Y.append(X)
-			X_Y.append(Y)
-			Decimal_X = decimal.Decimal(X)
-			Decimal_Y = decimal.Decimal(Y)
-			il.append(MacAddr,round(Decimal_X,3),round(Decimal_Y,3))
-			print("MacAddr : ",MacAddr,"X : ",round(Decimal_X,3),"Y : ",round(Decimal_Y,3))
-			original_line = "MacAddr : ",MacAddr,"X : ",round(Decimal_X,3),"Y : ",round(Decimal_Y,3)
-			prepare_server = {}
+                        X = (C*E-F*B)/(E*A-B*D)
+                        Y = (C*D-A*F)/(B*D-A*E)
+                        X_Y.append(X)
+                        X_Y.append(Y)
+                        Decimal_X = decimal.Decimal(X)
+                        Decimal_Y = decimal.Decimal(Y)
+                        il.append(MacAddr,round(Decimal_X,3),round(Decimal_Y,3))
+		#	print("MacAddr : ",MacAddr,"X : ",round(Decimal_X,3),"Y : ",round(Decimal_Y,3))
+                        original_line = "MacAddr : ",MacAddr,"X : ",round(Decimal_X,3),"Y : ",round(Decimal_Y,3)
+                        prepare_server = {}
                         for key, value in il.Mac_dict.items():
-				X,Y = value.split(" ")
-				X,Y = Kalman(float(X),float(Y))
-				if(key == "Client"):
-					continue
-				print("Kalman MacAddr : ",key,"X : ",round(decimal.Decimal(X),3),"Y : ",round(decimal.Decimal(Y),3))
- 				Kalman_line = "Kalman MacAddr : ",key,"X : ",round(decimal.Decimal(X),3),"Y : ",round(decimal.Decimal(Y),3)
-				child_inf.plus(key,round(decimal.Decimal(X),3),round(decimal.Decimal(Y),3))
-				prepare_server[key] = str(X)+" "+str(Y)
+                                X,Y = value.split(" ")
+                                X,Y = Kalman(float(X),float(Y))
+                                if(key == "Client"):
+                                       continue
+                                print("Kalman MacAddr : ",key,"X : ",round(decimal.Decimal(X),3),"Y : ",round(decimal.Decimal(Y),3))
+                                Kalman_line = "Kalman MacAddr : ",key,"X : ",round(decimal.Decimal(X),3),"Y : ",round(decimal.Decimal(Y),3)
+                                child_inf.plus(key,round(decimal.Decimal(X),3),round(decimal.Decimal(Y),3))
+                                prepare_server[key] = str(X)+" "+str(Y)
                         Child_location.update({MacAddr:X_Y})
-			Child_location.clear()
+                        Child_location.clear()
 
-	    print("###########################################################################################")
+            print("###########################################################################################")
             il.Mac_dict.clear()
             FirstClient.clear()
-	    SecondClient.clear()
-	    ThirdClient.clear()
-	    Child_location.clear()
+            SecondClient.clear()
+            ThirdClient.clear()
+            Child_location.clear()
 
         else:
                 #prepare for transmit
                 flag = False;initial = False
 
-		# Define timestamp
-		Number.timestamp = float(time.time())-float(Number.start_time)
+         	# Define timestamp
+                Number.timestamp = float(time.time())-float(Number.start_time)
 
 		# Define the data
                 prepare_dict_data = {}
                 dict_data = {}
 
-        	IDlist = []
-        	Distance =[]
+                IDlist = []
+                Distance =[]
 #		print("first")
 		#receive data and decode
-        	data = self.recv(8192)
-        	prepare_dict_data = json.loads(data)
-        	dict_data = ast.literal_eval(json.dumps(prepare_dict_data))
+                data = self.recv(8192)
+                prepare_dict_data = json.loads(data.decode('utf-8'))
+                dict_data = ast.literal_eval(json.dumps(prepare_dict_data))
 
-        	IDlist = dict_data.keys()
-        	Distance = dict_data.values()
+                print("dict_data : ", dict_data)
+                IDlist = list(dict_data.keys())
+                Distance = list(dict_data.values())
+
+                for i in range(len(IDlist)):
+                        print("Idlist : ",IDlist[i])
 
 		#Classify Beacon and update ID,Distance
-		for value in Distance:
-			if value == 1:
-				for i in range(0,len(IDlist)):
-					FirstClient.update({IDlist[i]:Distance[i]})
-			elif value == 2:
-				for i in range(0,len(IDlist)):
+                for value in Distance:
+                        if value == 1:
+                                for i in range(0,len(IDlist)):
+                                        FirstClient.update({IDlist[i]:Distance[i]})
+                        elif value == 2:
+                                for i in range(0,len(IDlist)):
                                         SecondClient.update({IDlist[i]:Distance[i]})
                         elif value == 3:
                                 for i in range(0,len(IDlist)):
@@ -361,28 +372,30 @@ class EchoHandler(asyncore.dispatcher_with_send):
                 if(int(Number.timestamp%10) == 1 or int(Number.timestamp%10) == 5 or int(Number.timestamp%10) == 9):
                         flag = True
 		#initialize the time as 0
-		if(int(Number.timestamp) > 100):
-			initial = True
-			Number.start_time = time.time()
-			print("Number : ",Number.timestamp)
+                if(int(Number.timestamp) > 100):
+                        initial = True
+                        Number.start_time = time.time()
+                        print("Number : ",Number.timestamp)
+
 		#excute the calculate
                 if(flag):
                         print("timestamp : ", Number.timestamp)
                         child_inf.cal()
-			flag = False
+                        flag = False
 
-		if(initial):
-			Number.child_info = []
-			print("initial : ", Number.child_info)
-			initial=False
+                if(initial):
+                        Number.child_info = []
+                        print("initial : ", Number.child_info)
+                        initial=False
 
-		print("receive..")
-		data ="ok to receive"
-        	self.send(data)
+
+                print("receive..")
+                data ="ok to receive"
+#                self.send(data)
 
     def handle_close(self):
-		print("======================Server: Connection Closed========================")
-		self.close()
+                print("======================Server: Connection Closed========================")
+                self.close()
 
 class Number:
     i = 0
@@ -399,20 +412,24 @@ class EchoServer(asyncore.dispatcher):
         self.set_reuse_addr()
         self.bind((host, port))
         self.listen(5)
+        #SET THE FIREBASE
+        print("SET THE FIREBASE")
+        cred = credentials.Certificate("./path/to/serviceAccountKey.json")
+        firebase_admin.initialize_app(cred)
         print("1start1")
-	Prepare()
+ #       Prepare()
 
 
     def handle_accept(self):
-	Number.start_time = float(time.time())
+        Number.start_time = float(time.time())
        	Number.num += 1
-	print("time : ",Number.start_time)
-	pair = self.accept()
+        print("time : ",Number.start_time)
+        pair = self.accept()
         if pair is not None:
             sock, addr = pair
             print ('Incoming connection from %s' % repr(addr))
             handler = EchoHandler(sock)
 
 
-server = EchoServer('192.168.1.5', 9011)
+server = EchoServer('192.168.35.16', 9011)
 asyncore.loop()
