@@ -108,55 +108,54 @@ class child_inf:
     def transmit(lis):
 
 	#SET THE FIREBASE
-#        print("SET THE FIREBASE")
+        print("SET THE FIREBASE")
 #        cred = credentials.Certificate("./path/to/serviceAccountKey.json")
 #        firebase_admin.initialize_app(cred)
-
-	#ACCESS TO DB
-        print("ACCESS TO BD")
-        global firebase
-        firebase = firebase.FirebaseApplication("https://kindersafety-83c44.firebaseio.com/", None)
-
         user = auth.get_user_by_email('kerylaw73@gmail.com')
         print('Successfully fetched user data: {0}'.format(user.uid))
 
-        button=0
-        line = gps.readline()
-        data = line.split(",")
-        if data[0] == "$GPRMC":
-            if data[2] == "A":
-                latitude = data[3]
-                longitude = data[5]
-                button = 1
+        children_data=OrderedDict()
+        #set the busid
+        busid = "hellobus"
+        children_data["busid"]=busid
 
+       # set the longitude and latitude
+
+       # line = gps.readline()
+       # data = line.split(",")
+       # if data[0] == "$GPRMC":
+       #     if data[2] == "A":
+       #         latitude = data[3]
+       #         longitude = data[5]
+       #         button = 1
+
+        button=0
         if(button != 1):
                 latitude="9999"
                 longitude="9999"
+        l=[0,1];l[0]=latitude;l[1]=longitude
+        children_data["l"]=l
 
-        print("latitude : ", latitude, "longitude : ",longitude)
-#        print("MacAdress : ",Mac, " ",boolean)
-        busid=cmdline('cat /proc/cpuinfo | grep Serial | awk \'{print$3}\'').strip()
+        # set the students list
+        students = []
+        for i in range(len(lis)):
+            studic={}
+            mac,boool=lis[i].split(",")
+            studic["stuid"]=mac
+            studic["in"]=boool
+            studic["danger"]=False
+            students.append(studic)
+        children_data["students"]=students
+
+       # busid=cmdline('cat /proc/cpuinfo | grep Serial | awk \'{print$3}\'').strip()
 
 #	array='{"busid":"busid","lat" : '+"\""+latitude+"\""+',"lon":'+"\""+longitude+"\""+',"students" :['
-        array='{"busid":"busid"','"l" : ['+"\""+latitude+"\""+","+"\""+longitude+"]"+",students"+' :['
+#        array='{"busid":"busid"','"l" : ['+"\""+latitude+"\""+","+"\""+longitude+"]"+",students"+' :['
 
-        payload = ""
-        for i in range(len(lis)):
-                if(i==len(lis)-1):
-                        mac,boool=lis[i].split(",")
-                        payload=payload+'{"stuid":'+'\\"'+str(mac)+'\"\\'+',\"in\":\"'+boool+'\"}]}'
-                        break
-                mac,boool=lis[i].split(",")
-                payload=payload+'{"stuid":'+'\\"'+str(mac)+'\"\\'+',\"in\":\"'+boool+'\"},'
-
-        payload=array+payload.replace("\\","")
-
-        print("payload : ",payload)
-        json.loads(payload)
-        print("success to change json")
-
-        result = firebase.put('/driversAvailable', user.uid, array )
-        print(result)
+        result = firebase.put('/driversAvailable', user.uid, children_data )
+        
+        print("Format : ",json.dumps(children_data, ensure_ascii=False, indent="\t"))
+        print("result : ",result)
         #r = requests.post(url,json=payload)
 
 #Make the Kalman
@@ -329,7 +328,6 @@ class EchoHandler(asyncore.dispatcher_with_send):
             SecondClient.clear()
             ThirdClient.clear()
             Child_location.clear()
-
         else:
                 #prepare for transmit
                 flag = False;initial = False
@@ -381,7 +379,8 @@ class EchoHandler(asyncore.dispatcher_with_send):
                 if(flag):
                         print("timestamp : ", Number.timestamp)
                         child_inf.cal()
-                        flag = False
+                        print("finish the cal()")
+                        #flag = False
 
                 if(initial):
                         Number.child_info = []
@@ -390,8 +389,8 @@ class EchoHandler(asyncore.dispatcher_with_send):
 
 
                 print("receive..")
-                data ="ok to receive"
-#                self.send(data)
+                data ="ok"
+                self.send(data.encode("utf-8"))
 
     def handle_close(self):
                 print("======================Server: Connection Closed========================")
@@ -416,13 +415,16 @@ class EchoServer(asyncore.dispatcher):
         print("SET THE FIREBASE")
         cred = credentials.Certificate("./path/to/serviceAccountKey.json")
         firebase_admin.initialize_app(cred)
+        #ACCESS TO DB
+        print("ACCESS TO BD")
+        global firebase
+        firebase = firebase.FirebaseApplication("https://kindersafety-83c44.firebaseio.com/", None)
         print("1start1")
  #       Prepare()
 
-
     def handle_accept(self):
         Number.start_time = float(time.time())
-       	Number.num += 1
+        Number.num += 1
         print("time : ",Number.start_time)
         pair = self.accept()
         if pair is not None:
